@@ -1,0 +1,127 @@
+{
+  "Version": "1.0",
+  "OrgId": 251205,
+  "ClientId": "68e975b5-390c-7614-49c4-5dcd36e6e6fc",
+  "ClientName": "PSU Farm Services",
+  "FarmId": "31cbfb08-4a06-4bd6-ac78-505290669676",
+  "FarmName": "Farm 36",
+  "FieldId": "563b65fa-0000-1000-7fa5-e1e1e111af58",
+  "FieldName": "36C",
+  "FieldOperationId": "0a6695ca-8ccb-42bd-8409-3d3aad55f35d",
+  "Operation": "Harvest",
+  "CropSeason": 2022,
+  "CropId": 173,
+  "CropToken": "CORN_WET",
+  "CropName": "Corn",
+  "Work": {
+    "WorkPlanId": "00000000-0000-0000-0000-000000000000",
+    "WorkOrder": ""
+  },
+  "Product": {
+    "ProductId": "aae48cac-63e2-4b2b-b586-81e4581ece94",
+    "ProductName": "NK0243-5122",
+    "BrandName": "---",
+    "TankMix": false,
+    "ProductUseHash": "4d3be62"
+  },
+  "FieldOperationStartDate": "2022-12-12T21:13:10.771Z",
+  "FileCreatedTimeStamp": "2025-12-10T19:30:03.8668837Z",
+  "DataAttributes": [
+    {
+      "Name": "DISTANCE",
+      "Unit": "ft",
+      "Description": "Distance Travelled From Previous Point"
+    },
+    {
+      "Name": "SWATHWIDTH",
+      "Unit": "ft",
+      "Description": "Width Of Element"
+    },
+    {
+      "Name": "VRYIELDVOL",
+      "Unit": "bu1ac-1",
+      "Description": "Yield as Volume"
+    },
+    {
+      "Name": "SECTIONID",
+      "Description": "Element Id"
+    },
+    {
+      "Name": "Crop",
+      "Description": "CropId"
+    },
+    {
+      "Name": "WetMass",
+      "Unit": "lb1ac-1",
+      "Description": "Wet Mass"
+    },
+    {
+      "Name": "Moisture",
+      "Unit": "prcnt",
+      "Description": "Moisture"
+    },
+    {
+      "Name": "Time",
+      "Description": "Timestamp"
+    },
+    {
+      "Name": "Heading",
+      "Description": "Machine Heading"
+    },
+    {
+      "Name": "VARIETY",
+      "Description": "Variety Name"
+    },
+    {
+      "Name": "Elevation",
+      "Unit": "ft",
+      "Description": "Elevation"
+    },
+    {
+      "Name": "IsoTime",
+      "Description": "Precise Timestamp"
+    },
+    {
+      "Name": "Machine",
+      "Description": "Index into the MachineUsage map, or 0 if no information exists"
+    },
+    {
+      "Name": "FUEL",
+      "Unit": "gal",
+      "Description": "Fuel"
+    },
+    {
+      "Name": "VEHICLSPEED",
+      "Unit": "mi1hr-1",
+      "Description": "Vehicle Speed"
+    },
+    {
+      "Name": "DRYMATTER",
+      "Unit": "prcnt",
+      "Description": "Dry Matter"
+    },
+    {
+      "Name": "PRODUCTHASH",
+      "Description": "ProductUseHash"
+    }
+  ],
+  "MachineUsage": {
+    "1": {
+      "MachineId": "1c925107-81d4-4838-5238-1954c3f44e53",
+      "MachineName": "1H0S770SPN0821052",
+      "MachineSerial": "1H0S770SPN0821052",
+      "OperatorId": "00000000-0000-0000-0000-000000000000",
+      "OperatorName": ""
+    }
+  },
+  "Implements": [],
+  "Products": [
+    {
+      "ProductId": "aae48cac-63e2-4b2b-b586-81e4581ece94",
+      "ProductName": "NK0243-5122",
+      "BrandName": "---",
+      "TankMix": false,
+      "ProductUseHash": "4d3be62"
+    }
+  ]
+}

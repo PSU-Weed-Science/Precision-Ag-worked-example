@@ -1,0 +1,133 @@
+{
+  "Version": "1.0",
+  "OrgId": 251205,
+  "ClientId": "68e975b5-390c-7614-49c4-5dcd36e6e6fc",
+  "ClientName": "PSU Farm Services",
+  "FarmId": "31cbfb08-4a06-4bd6-ac78-505290669676",
+  "FarmName": "Farm 36",
+  "FieldId": "563b65fa-0000-1000-7fa5-e1e1e111af58",
+  "FieldName": "36C",
+  "FieldOperationId": "4f95e566-b1e1-48c7-bf7d-9ac2fd6ea489",
+  "Operation": "Harvest",
+  "CropSeason": 2024,
+  "CropId": 173,
+  "CropToken": "CORN_WET",
+  "CropName": "Corn",
+  "Work": {
+    "WorkPlanId": "00000000-0000-0000-0000-000000000000",
+    "WorkOrder": ""
+  },
+  "Product": {
+    "ProductId": "87404782-d611-4713-9b5a-d3c33725c2fb",
+    "ProductName": "FS5115X",
+    "BrandName": "---",
+    "TankMix": false,
+    "ProductUseHash": "9717e13d"
+  },
+  "FieldOperationStartDate": "2024-11-13T20:39:59.333Z",
+  "FileCreatedTimeStamp": "2025-12-10T19:27:44.7261489Z",
+  "DataAttributes": [
+    {
+      "Name": "DISTANCE",
+      "Unit": "ft",
+      "Description": "Distance Travelled From Previous Point"
+    },
+    {
+      "Name": "SWATHWIDTH",
+      "Unit": "ft",
+      "Description": "Width Of Element"
+    },
+    {
+      "Name": "VRYIELDVOL",
+      "Unit": "bu1ac-1",
+      "Description": "Yield as Volume"
+    },
+    {
+      "Name": "SECTIONID",
+      "Description": "Element Id"
+    },
+    {
+      "Name": "Crop",
+      "Description": "CropId"
+    },
+    {
+      "Name": "WetMass",
+      "Unit": "lb1ac-1",
+      "Description": "Wet Mass"
+    },
+    {
+      "Name": "Moisture",
+      "Unit": "prcnt",
+      "Description": "Moisture"
+    },
+    {
+      "Name": "Time",
+      "Description": "Timestamp"
+    },
+    {
+      "Name": "Heading",
+      "Description": "Machine Heading"
+    },
+    {
+      "Name": "VARIETY",
+      "Description": "Variety Name"
+    },
+    {
+      "Name": "Elevation",
+      "Unit": "ft",
+      "Description": "Elevation"
+    },
+    {
+      "Name": "IsoTime",
+      "Description": "Precise Timestamp"
+    },
+    {
+      "Name": "Machine",
+      "Description": "Index into the MachineUsage map, or 0 if no information exists"
+    },
+    {
+      "Name": "FUEL",
+      "Unit": "gal",
+      "Description": "Fuel"
+    },
+    {
+      "Name": "VEHICLSPEED",
+      "Unit": "mi1hr-1",
+      "Description": "Vehicle Speed"
+    },
+    {
+      "Name": "DRYMATTER",
+      "Unit": "prcnt",
+      "Description": "Dry Matter"
+    },
+    {
+      "Name": "PRODUCTHASH",
+      "Description": "ProductUseHash"
+    }
+  ],
+  "MachineUsage": {
+    "1": {
+      "MachineId": "004228e2-4634-f8cb-7d51-6462a89c3356",
+      "MachineSerial": "1H0S770SCR0830571",
+      "OperatorId": "00000000-0000-0000-0000-000000000000",
+      "OperatorName": ""
+    }
+  },
+  "Implements": [],
+  "Products": [
+    {
+      "ProductId": "87404782-d611-4713-9b5a-d3c33725c2fb",
+      "ProductName": "FS5115X",
+      "BrandName": "---",
+      "TankMix": false,
+      "ProductUseHash": "9717e13d"
+    },
+    {
+      "ProductId": "00000000-0000-0000-0000-000000000000",
+      "ProductName": "---",
+      "BrandName": "---",
+      "TankMix": false,
+      "ProductUseHash": "3e2d9c87"
+    }
+  ]
+}
