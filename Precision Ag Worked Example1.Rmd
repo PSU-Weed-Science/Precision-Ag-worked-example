@@ -99,7 +99,7 @@ EXA_inner <- crop(EXA, inner_field1)
 
 plot(EXA_inner, "DRYMATTER", 
      main = "Yield",
-     col = hcl.colors(100, "Lajolla"))
+     col = hcl.colors(100, "Hawaii"))
 ```
 
 Third, choose a boundary by drawing a shape in a new window
@@ -234,7 +234,7 @@ template <- rast(
 )
 ```
 
-Now we "resample" to DEFINE THIS
+Now we "resample" -- force these rasters to line up! 
 ```{r}
 EXA1 <- resample(EXA.R, template, method = "bilinear") #Bilinear is used for continuous data (like yield)
 ```
@@ -451,6 +451,93 @@ names(yield_stack) <- c("2020", "2023", "2025")
 yield_stack
 ```
 
+### Raster math
+
+You can do math with rasters! A good example here: https://www.neonscience.org/resources/learning-hub/tutorials/create-chm-rasters-r 
+
+it's math but in a raster
+
+```{r}
+diff <- yield_stack$`2025`- yield_stack$`2020`
+names(diff) <- "difference"
+diff
+```
+
+
+
+### Figure example
+
+Figure example using terra and 'sf'
+
+
+Basic figure we've already seen!
+
+```{r}
+# Make a very basic plot where brighter colors denote higher yield
+plot(EXA25, "DRYMATTER")
+
+```
+
+Below is almost directly from the cleanRfield worked example!
+
+This figure is made by using interpolation to smooth the yield data. 
+Not something I've worked with beyond making the below figure (following the tutorial)
+
+```{r}
+#### packages to run basic filtering with cleanRfield ####
+#library(terra)
+#library(cleanRfield)
+
+#### additional packages needed for interpolation & mapping ####
+library(gstat) # used to make the idw model
+library(sf) # used to convert spatial objects
+library(sp) # used to prepare the raster grid with spsample function
+library(tmap) # used for visualization
+
+#### preparing the yield data ####
+#EX1 <- vect("EX1.shp") # EX1.shp download link is in tutorial section 1 
+#EX1.Shape <- vect("EX1_boundary.shp") #EX1_boundary.shp download link is in tutorial section 1  
+
+# filtering data to remove biologically unlikely soybean yield observations and NA values
+EXA.F <- filterField(field = EXA,
+                   trait = c("DRYMATTER","DRYMATTER"),
+                   value = c(84,87),
+                   cropAbove = c(T,F)) 
+                   
+# transforming the filtered data so that it is a projected CRS
+EX1_merc <- spTransform(as_Spatial(st_as_sf(EXA.F)), CRS=CRS("+proj=merc +ellps=GRS80")) 
+EX1_merc # looking at summary output to check projection 
+
+#transforming the boundary too-- this will be used later for visualization
+EX1.Shape_merc <- spTransform(as_Spatial(st_as_sf(EX.Shape)), CRS=CRS("+proj=merc +ellps=GRS80")) 
+EX1.Shape_merc #looking at summary output to check projection 
+
+#### preparing an empty grid ####
+G <- as.data.frame(spsample(EX1_merc, "regular", n=50000)) #n = total number of grid cells
+names(G) <- c("X", "Y")
+coordinates(G) <- c("X", "Y")
+gridded(G) <- TRUE  # create SpatialPixel object
+fullgrid(G) <- TRUE  # create SpatialGrid object
+proj4string(G) <- proj4string(EX1_merc) # using the projection from EX1_merc to project the grid G
+proj4string(G) # checking that G is projected
+
+#### running IDW using the yield data and empty grid ####
+Yield.idw <- gstat::idw(DRYMATTER ~ 1, EX1_merc, newdata=G, idp=2.0)
+
+#### visualizing IDW interpolation ####
+r.idw <- raster::raster(Yield.idw) # convert the IDW model to a RasterStack
+r.masked <- raster::mask(r.idw, EX1.Shape_merc) # mask the raster to the field boundary
+
+yieldmap.idw <- tm_shape(r.masked) + #make the map using functions from the tmap library
+  tm_raster(n=10,palette = "YlGn", 
+            title="Dry Yield") + 
+  tm_legend(legend.outside=TRUE)
+yieldmap.idw #view the map
+```
+
+
+
+
 # Yield Zone example 
 
 Here we are going to delineate yield stability zones over 3 years of harvest data from this field using the methods of Maestrini & Basso, 2018. 
@@ -464,29 +551,136 @@ We've already done it!
 We did this above-- do we keep the boundary as the main shape or do you want to switch? If yes, we'll redo the below steps, if no we'll move on. 
 Time dependent it is good practice!
 
+```{r}
+#newBuff1 <- buffer( 
+ # EX.Shape,
+  #width = -15 # about half a swath
+#)
+
+#plot(EX.Shape)
+#plot(newBuff, add = TRUE, border = "springgreen1", lwd = 3)
+```
+
 ### Step 2: Resample
+
+ONLY IF WE DID A NEW BOUNDARY
+
+```{r}
+#template3 <- rast(
+ # ext(newBuff1), # the original shape
+  #resolution = 0.00008, # same as our above raster
+  #crs = crs(EX.Shape) # make it match!!
+#)
+```
+
+
+```{r}
+#EXA20 <- resample(EXA20.R, template3, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+```{r}
+#EXA23 <- resample(EXA23.R, template3, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+```{r}
+#EXA20 <- resample(EXA20.R, template3, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
 
 ### Step 3: Mask
 
+```{r}
+#mask_20A <- mask(EXA20, template3)
+#plot(mask_20A,col = hcl.colors(12, "Peach"), main = "2020 Yield")
+```
+
+```{r}
+#mask_23A <- mask(EXA23, template3)
+#plot(mask_23A,col = hcl.colors(12, "Peach"), main = "2020 Yield")
+```
+
+```{r}
+#mask_25A <- mask(EXA25, template3)
+#plot(mask_25A,col = hcl.colors(12, "Peach"), main = "2020 Yield")
+```
+
+
 ### Step 4: Combine
+
+```{r}
+#yield_stackA <- c(mask_20A,
+#                 mask_23A,
+ #                mask_25A)
+
+#names(yield_stackA) <- c("2020", "2023", "2025")
+
+#yield_stack <- yield_stackA
+```
 
 ### Step 5: Make Long
 
 Why make it long? For figures and statistics! Fortunately, the package tidyr has a pivot_long function that makes this process easy!
 
+This will also make the raster into a dataframe.. we do it again later but this version is a little funkier looking because we are making it longer!
+
 ```{r}
+library(tidyr)
+
+
+yield_df <- as.data.frame(yield_stack, xy = TRUE) # XY = TRUE IS A MUST FOR THE XY TO STAY
+
+
+yield_df <- yield_df %>%
+  pivot_longer(
+    cols = c("2020",  "2023",  "2025"), # we are making long by year
+    names_to = "year",
+    values_to = "yield"
+  ) 
+
+# pro tip-- if you've loaded your package and then get a weird error.. put your package in front of the function in case another package is "hiding" the function
+#it would look like this-- tidyr::pivot_longer
+yield_df <- as.data.frame(yield_df)
+
+head(yield_df)
+
 
 ```
 
+Sick... would be sicker in ggplot2
 
-### Step 6: FIGURE 
+
+```{r}
+library(ggplot2)
+ggplot(data = yield_df, aes(x = x, y = y, fill = yield)) +
+  geom_raster() +
+  scale_fill_continuous(limits = c(76, 97), type = "viridis", na.value = "white") + # Set color limits
+  labs(fill = "Yield (bu/ac)") +
+  theme_bw()+
+  facet_wrap(~year)+
+  theme(strip.background = element_rect(fill = "white", color = "black"),
+        strip.text = element_text(color = "black", face = "bold", size = 15),
+        axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+```
+
+
 
 ### Step 7: Calculate mean yield and sd
 
-This is in reference to the Maestrini and Basso paper. They determined yield zones by first normalizing by centering on 0 and scaling to a sd of 1. For every pixel, we will deterimine the mean normalized yield across our 3 years and the temporal sd. 
+This is in reference to the Maestrini and Basso paper. They determined yield zones by first normalizing by centering on 0 and scaling to a sd of 1. For every pixel, we will determine the mean normalized yield across our 3 years and the temporal sd. 
 
 We're removing NA observations-- it can make the temporal sd funky
 ```{r}
+yield_stack <- c(mask_20, # repeat from earlier because I need to see it for my sanity
+                 mask_23,
+                 mask_25)
+
+names(yield_stack) <- c("2020", "2023", "2025")
+
+str(yield_stack)
+
 yield_stack[yield_stack == 0] <- NA
 
 yield_real <- app(yield_stack, fun = function(x){ # app is a cool tool in terra-- apply a function to a raster!
@@ -500,6 +694,10 @@ yield_all <- yield_all_real
 
 
 Now for the math
+
+What's going on down here? First we're determining the mean and sd of yield per pixel.
+
+Then we will use 'global' to calculate the global yield mean 
 ```{r}
 yield_mean <- app(yield_all, mean, na.rm = TRUE)
 yield_sd <- app(yield_all, sd, na.rm = FALSE)
@@ -509,9 +707,19 @@ mu <- global(yield_mean, mean, na.rm = TRUE)[1,1] #mean yield
 mu2 <- global(yield_sd, mean, na.rm = TRUE)[1,1] #mean sd
 sdv <- global(yield_mean, sd, na.rm = TRUE)[1,1] #sd of the mean
 sdv2 <- global(yield_sd, sd, na.rm = TRUE)[1,1] #sd of the sd
+
+# we have all of these [1,1] at the end ^^ because this tells R we want a number in a cell as opposed to the whole matrix!
+
+
 yield_z <- (yield_mean - mu) / sdv #yield z value
 sd_z <- (yield_sd - mu2) / sdv2 #sd z value
 ```
+
+yield_z is a standardized z score for each pixel's mean yield 
+- how far above or below average is this pixel 
+- same for sd_z
+
+
 
 ### Step 8: Delineate the zones
 
@@ -608,16 +816,349 @@ Focal calculates neighborhood statistics in a raster. We will be using it to tel
 
 My initial thought was that this reminds me of cellular automata models-- except just one generation
 
+Starting wit a 3 x 3 matrix. This is equivalent to 24m^2 around the pixel
+```{r}
+# w determines the number of pixels around it to consider 
+
+w <- matrix(1, nrow = 3, ncol = 3)
+
+# categorical variables makes modal cry
+zones_num <- ifel(
+  yield_z > 0 & sd_z > 0, 1,
+  ifel(yield_z > 0 & sd_z < 0, 2,
+       ifel(yield_z < 0 & sd_z > 0, 3, 4))
+)
+global(is.na(zones_num), sum) # lots
+
+zones_num <- mask(zones_num, EX.Shape) # mask the zones_num to our shape
+
+# this step almost made me cry today
+zone_smooth <- focal(
+  zones_num,
+  w = w,
+  fun = "modal",
+  na.rm = TRUE,
+  expand = FALSE
+)
+
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+zone_smooth_masked <- mask(zone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+zone_df <- as.data.frame(zone_smooth_masked, xy = TRUE)
+names(zone_df)[3] <- "zone"
+
+zone_df$zone <- factor(
+  zone_df$zone,
+  levels = 1:4,
+  labels = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+### plot
+library(sf)
+ggplot() +
+  geom_raster(
+    data = zone_df,
+    aes(x = x, y = y, fill = zone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+  scale_fill_manual(
+    values = c("#9AFF9A", "#43CD80", "#FFC1C1", "#E75480"),
+    name = "Yield stability zone"
+  ) +
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+  
+
+```
 
 
 
-Raster -> Dataframe
-- align using the x, y but they HAVE GOT TO MATCH
+Hmm.. I kind of like it but I also think we should go bigger! Think about the size of combines and their mobility... 
+Let's try 5x5 (~40m^2)
 
-Pixels get weird
-- ag data is gonna vary in observation size and forcing it to fit one size can make it really really wrong
-- always mask early and set values for resolution right away and CHECK compareGeom()
-- keep track of units
+```{r}
+# w determines the number of pixels around it to consider 
+
+w <- matrix(1, nrow = 5, ncol = 5)
+
+
+# this step almost made me cry today
+zone_smooth <- focal(
+  zones_num,
+  w = w,
+  fun = "modal",
+  na.rm = TRUE,
+  expand = FALSE
+)
+
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+zone_smooth_masked <- mask(zone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+zone_df <- as.data.frame(zone_smooth_masked, xy = TRUE)
+names(zone_df)[3] <- "zone"
+
+zone_df$zone <- factor(
+  zone_df$zone,
+  levels = 1:4,
+  labels = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+### plot
+library(sf)
+ggplot() +
+  geom_raster(
+    data = zone_df,
+    aes(x = x, y = y, fill = zone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+  scale_fill_manual(
+    values = c("#CAFF70", "#00CD00", "#FFF0F5", "#8968CD"),
+    name = "Yield stability zone"
+  ) +
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+  
+
+```
+
+
+Let's get crazy!!!
+
+Let's try 9x9 
+
+```{r}
+# w determines the number of pixels around it to consider 
+
+w <- matrix(1, nrow = 9, ncol = 9)
+
+
+# this step almost made me cry today
+zone_smooth <- focal(
+  zones_num,
+  w = w,
+  fun = "modal",
+  na.rm = TRUE,
+  expand = FALSE
+)
+
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+zone_smooth_masked <- mask(zone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+zone_df <- as.data.frame(zone_smooth_masked, xy = TRUE)
+names(zone_df)[3] <- "zone"
+
+zone_df$zone <- factor(
+  zone_df$zone,
+  levels = 1:4,
+  labels = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+### plot
+library(sf)
+ggplot() +
+  geom_raster(
+    data = zone_df,
+    aes(x = x, y = y, fill = zone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+  scale_fill_manual(
+    values = c("#54FF9F", "#2E8B57", "#FFE4E1", "#EE00EE"),
+    name = "Yield stability zone"
+  ) +
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+  
+
+```
+
+# Conclusion
+
+The above code walked us through the processes of importing, exploring, cleaning, and analyzing raster data. We used cleanRfield for a lot, but terra for more. These two packages have extensive online documentation and worked examples that really helped in my process. There are other packages that are also useful (pacu is one!) and require their own rabbit holes! 
+
+https://github.com/filipematias23/cleanRfield
+
+https://rspatial.github.io/terra/ 
+
+
+Key take aways:
+1. Rasters are like grid paper 
+2. Everything MUST match
+
+
+*PACU side quest if interested*
+
+
+PACU package
+
+What's the deal with PACU (precision agriculture cleaning units)?
+PACU has a proposed workflow for yield monitor data!!!
+From their cran.r
+
+1. Read the data in
+2. Compute summary statistics and visualize the data
+3. Check the yield data
+4. Fix potential issues
+5. Process the data
+6. Examine the yield map
+
+PACU proposed workflow
+This is directly from: https://cran.r-project.org/web/packages/pacu/vignettes/pacu_ym.html
+
+
+Load and inspect
+```{r}
+library(sf)
+
+raw.yield <- st_read("PSU-FS-36C/PSU Farm Ser_Farm 36_36C_Harvest_2025-10-29_00.shp")
+boundary <- st_read("PSU-FS-36C/boundaries.shp")
+
+```
+
+```{r}
+names(raw.yield)
+```
+
+```{r}
+cols <- function(n) hcl.colors(n, 'Temps', rev = TRUE)
+plot(raw.yield['DRYMATTER'], pal = cols)
+```
+
+
+```{r}
+boxplot(raw.yield$DRYMATTER)
+```
+
+Check yield monitor data with pa_check_yield()
+
+```{r}
+chk <- pa_check_yield(input = raw.yield,
+               algorithm = 'all')
+chk
+```
+
+
+Processing data and examining yield
+
+```{r}
+ymp1 <- pa_yield(input = raw.yield,
+                 boundary = boundary,
+                 algorithm = 'simple',
+                 lbs.per.bushel = 56,
+                 unit.system = 'metric',
+                 verbose = FALSE)
+
+ymp1
+
+pa_plot(ymp1)
+```
+
+
+Unit conversion and moisture adjustment
+
+
+```{r}
+ymp2 <- pa_yield(input = raw.yield,
+                 boundary = boundary,
+                 algorithm = 'simple',
+                 unit.system = 'standard',
+                 moisture.adj = 15.5,
+                 lbs.per.bushel = 56,
+                 verbose = FALSE)
+
+ymp2
+
+pa_plot(ymp2)
+```
+
+Outlier removal
+
+```{r}
+ymp3 <- pa_yield(input = raw.yield,
+                 boundary = boundary,
+                 algorithm = 'simple',
+                 unit.system = 'metric',
+                 clean = TRUE,
+                 clean.sd = 3,
+                 lbs.per.bushel = 56,
+                 verbose = FALSE)
+
+ymp3
+
+pa_plot(ymp3)
+```
+
+
+
+Kriging
+We can interpolate the maps using the Kriging method. 
+
+```{r}
+ymp5 <- pa_yield(input = raw.yield,
+                 boundary = boundary,
+                 algorithm = 'simple',
+                 unit.system = 'metric',
+                 clean = TRUE,
+                 clean.sd = 3,
+                 smooth.method = 'krige',
+                 lbs.per.bushel = 56,
+                 verbose = FALSE,
+                 maxdist = 50)
+ymp5
+
+pa_plot(ymp5, plot.var = 'yield')
+pa_plot(ymp5, plot.type = 'variogram')
+```
 
 
 
