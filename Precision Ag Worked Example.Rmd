@@ -1,0 +1,629 @@
+---
+title: "Precision Ag Worked Example"
+author: "Lil'Hammer"
+date: "2026-01-27"
+output: html_document
+---
+
+Load packages
+
+```{r}
+#install.packages("devtools")
+#devtools::install_github("filipematias23/cleanRfield")
+#install.packages("cleanRfield")
+library(cleanRfield)
+
+#devtools::install_github("cldossantos/pacu")
+library(pacu)
+library(terra)
+library(dplyr)
+```
+
+
+
+# Welcome
+
+Welcome to our worked precision ag example for lab meeting!! 
+Today the plan is to go over the process of importing data, exploration, basic filtering, playing with rasters, and ending with a worked example with yield data. 
+If you've done ANYTHING with these kinds of data before, you may find some of this information not new-- sorry!!!
+
+Our Example field will be a PSU field "36C"
+
+## Import field data
+
+Here I'd like to note the first important piece of information. 
+You MUST have all of the files together in the same folder-- you'll notice there are a ton of different files. Info about what they are below.
+
+.shp: geometry, points, lines, polygons
+.shx: index
+
+If these two are not together in the same file, R will scream
+
+.dbf: attribute table
+.prj: coordinate reference system (UTC-8)
+.cpg: character encoding
+.json: metadata
+
+```{r}
+par(mfrow=c(1,2))
+
+EXA <- vect("PSU-FS-36C/PSU Farm Ser_Farm 36_36C_Harvest_2025-10-29_00.shp")
+plot(EXA, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36C/boundaries.shp")
+plot(EX.Shape, main="Field Boundary")
+```
+
+#### Figures
+
+This will be a basic figure of yield across the field
+
+```{r}
+plot(EXA, "DRYMATTER", main = "Raw Harvest Data")
+```
+
+We can plot whatever we like! 
+
+Here's vehicle speed with a new color palette
+```{r}
+library(RColorBrewer)
+plot(EXA, "VEHICLSPEED", main = "Vehicle speed (mph)",col = brewer.pal(12, "PuRd"))
+```
+
+
+### Boundaries 1
+
+Below examples modified from worked examples: https://github.com/filipematias23/cleanRfield
+
+Borders are often an important step in analyzing spatial data in crop fields, particularly when looking at fields with atypical shapes. 
+There are a few ways to do this.
+
+First, no boundary... just the border we imported
+```{r}
+# using cleanRfield
+EXA_yield <- cropField(field = EXA, shape = EX.Shape) 
+```
+
+Second, boundary based on recorded attributes like swath width.
+
+Swath width
+```{r}
+summary(EXA$SWATHWIDTH)
+
+# in feet
+# median is 35, mean 32.3 ft
+
+inner_field1 <- buffer(EX.Shape, width = -30)
+
+EXA_inner <- crop(EXA, inner_field1)
+
+plot(EXA_inner, "DRYMATTER", 
+     main = "Yield",
+     col = hcl.colors(100, "Lajolla"))
+```
+
+Third, choose a boundary by drawing a shape in a new window
+
+```{r}
+#Open an extra plot window 
+x11() 
+# "Use cursor to select 4 points around polygon (1) in the plots window."
+EXA.C<-cropField(field = EXA, nPolygon = 1, nPoint = 4)
+```
+
+```{r}
+plot(EXA.C$shape, main="Drawing Shape")
+```
+
+
+```{r}
+# Using the shape drawn above to crop data:
+EXA.C<-cropField(field = EXA, shape = EXA.C$shape) 
+```
+
+Fourth, a uniform distance from the edge of the field 
+ 
+```{r}
+newBuff <- buffer( 
+  EX.Shape,
+  width = -15 # about half a swath
+)
+
+plot(EX.Shape)
+plot(newBuff, add = TRUE, border = "aquamarine", lwd = 3)
+```
+ 
+
+### Filtering 1
+
+We can also filter our data to remove outliers or data recorded under circumstances we believe may make the data unreliable.
+
+Vehicle speed
+```{r}
+#what speed is normal??
+# google says corn harvest is 3.5-5mph usually
+# median is 3.7
+
+EXA_speed <- EXA_inner[
+  EXA_inner$VEHICLSPEED > 2.5 & EXA_inner$VEHICLSPEED < 8
+]
+
+y1 <- EXA_speed$DRYMATTER 
+
+q1 <- quantile(y1, probs = c(0.01, 0.99), na.rm = TRUE)
+
+EXA_clean <- EXA_speed[y1 > q1[1] & y1 < q1[2]]
+
+plot(EXA_clean, "DRYMATTER", 
+     main = "Cleaned Yield",
+     col = hcl.colors(100, "YlGn"))
+
+```
+
+# Rasters
+
+Here we will transition into modifying rasters to make them easier to work with. We will come back to boundaries and filtering in this section. 
+
+What exactly is a raster? Some notes!! 
+
+RASTER BASED NOTES OF WHAT I'VE LEARNED 
+
+Raster = grid of pixels
+- like graphing paper!
+- coarse resolution = big pixels
+- fine resolution = small pixels
+
+Let's make our field a raster 
+
+```{r}
+EXA.R <- rasterField(
+  field = EXA, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+```
+
+What's the deal with resolution???? So many things. 
+cleanRfield (the package we're using) defaults to degrees. This is fine right now but may be an issue later. 
+This resolution we're working with now is saying 0.00008th of a degree squared (which I've found is reasonable for yield after some trial and error).
+High resolutions = finer detail, longer loading times
+Low resolutions = coarser detail, quicker loading times
+
+```{r}
+plot(EXA.R$DRYMATTER,col = hcl.colors(10, "OrYel"))
+```
+
+We should make sure our data are within a boundary. 
+
+### Boundaries 2
+
+One way to do this is create a template raster. This raster just contains the boundary file (NO FIELD OBSERVATIONS) so you can use it to crop your main raster.
+
+Why do it this way? ALIGNMENT
+
+To stack rasters they must align in 3 qualities: crs, extent, and resolution. 
+
+Raster resolution & alignment
+- resample rasters to make them match (template helps here)
+- method = near for categories
+- method = biliniear for continuous
+- masking (making things match!) but within a boundary
+
+CRS
+- gotta match
+- PA is utm 18
+- it gets weird if you don't match
+
+Extent
+- geographic bounding box of a raster
+- must match
+- check for matching (for CRS, extent, and res) using compareGeom()
+
+** at this point I switch to using rast() from 'terra.' This package is a base for cleanRfield. 
+
+https://www.rdocumentation.org/packages/terra/versions/1.8-86/topics/resample
+
+Remember the 15 ft boundary we made earlier and called 'newB' -- using that boundary in the template!
+```{r}
+# use rast from terra instead (terra is a base for a lot of cleanRfield)
+
+template <- rast(
+  ext(newBuff), # the original shape
+  resolution = 0.00008, # same as our above raster
+  crs = crs(EX.Shape) # make it match!!
+)
+```
+
+Now we "resample" to DEFINE THIS
+```{r}
+EXA1 <- resample(EXA.R, template, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+```{r}
+par(mfrow = c(1,2))
+plot(EXA.R$DRYMATTER,col = hcl.colors(12, "PuBuGn"), main = "without template")
+plot(EXA1$DRYMATTER,col = hcl.colors(12, "Inferno"), main = "with template")
+```
+
+Wait! These look the same? They are... we forgot a key step -- masking!
+
+### Masking
+
+Masking is when you make the rasters MATCH (so imporant). What we'll do here is call for the original raster to match the raster with the newB border. 
+```{r}
+Amask <- mask(EXA1, newBuff)
+plot(Amask,col = hcl.colors(12, "OrYel"), main = "with template FOR REAL")
+```
+
+Awesome! We have a border. Resampling and masking are very key steps-- forgetting them or doing them out of order will really mess things up down the line. 
+
+Here's a new template with our previously made small shape.
+```{r}
+# use rast from terra instead (terra is a base for a lot of cleanRfield)
+
+template1 <- rast(
+  ext(newBuff), # the original shape
+  resolution = 0.00008, # same as our above raster
+  crs = crs(EX.Shape) # make it match!!
+)
+```
+
+Now we "resample" to DEFINE THIS
+```{r}
+EXA1 <- resample(EXA.R, template, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+```{r}
+par(mfrow = c(1,2))
+plot(EXA.R$DRYMATTER,col = hcl.colors(12, "PuBuGn"), main = "without template")
+plot(EXA1$DRYMATTER,col = hcl.colors(12, "Inferno"), main = "with template")
+```
+
+
+### Filtering 2
+
+Back to cleanRfield for this part!!
+
+You can filter based on whatever variables you can think of. 
+
+Yield too high!
+```{r}
+EXA.F<-filterField(field = EXA,
+                  trait = "DRYMATTER",
+                  value = 87,
+                  cropAbove = T)
+```
+
+Yield outliers!
+
+```{r}
+EXA.F1<-filterField(field = EXA,
+                  trait = c("DRYMATTER","DRYMATTER"),
+                  value = c(84,87),
+                  cropAbove = c(T,F))
+```
+
+The standard deviation of yield
+```{r}
+EXA.SD<-sdField(field = EXA,
+                trait = c("DRYMATTER"),
+                value = 0.2)
+```
+
+The standard deviation of yield AND vehicle speed!
+```{r}
+EXA.SD1<-sdField(field = EXA,
+                trait = c("DRYMATTER","VEHICLSPEED"),
+                value = c(0.5,0.2))
+```
+
+### Stacking rasters
+
+Next we need to think about stacking rasters (combining them!). This is something you'll do often if you have multiple years of data. 
+
+You should think of all of the steps we've already covered-- resample and mask. 
+
+SpatRaster = raster stacks
+- multiple layers stacked together
+- must match CRS, extent, and resolution for math stuff
+
+Let's practice stacking by adding in two more years of data from the same field!
+We already have 2025... let's do 2020
+```{r}
+par(mfrow=c(1,2))
+
+EXA20 <- vect("PSU-FS-36C/PSU Farm Ser_Farm 36_36C_Harvest_2020-10-19_00.shp")
+plot(EXA20, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36C/boundaries.shp")
+plot(EX.Shape, main="Field Boundary")
+```
+Looks the same (it pretty much is)
+
+Now 2023
+```{r}
+par(mfrow=c(1,2))
+
+EXA23 <- vect("PSU-FS-36C/PSU Farm Ser_Farm 36_36C_Harvest_2023-10-26_00.shp")
+plot(EXA23, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36C/boundaries.shp")
+plot(EX.Shape, main="Field Boundary")
+```
+
+Make a raster for both years
+
+```{r}
+EXA20.R <- rasterField(
+  field = EXA20, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+```
+
+```{r}
+EXA23.R <- rasterField(
+  field = EXA23, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+```
+
+And a new template
+```{r}
+template2 <- rast(
+  ext(EX.Shape), # the original shape
+  resolution = 0.00008, # same as our above raster
+  crs = crs(EX.Shape) # make it match!!
+)
+```
+
+Now we must resample-- I'll be sticking with our usual shape as the boundary
+
+```{r}
+EXA20 <- resample(EXA20.R, template2, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+```{r}
+EXA23 <- resample(EXA23.R, template2, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+Masking
+
+```{r}
+mask_20 <- mask(EXA20, EX.Shape)
+plot(mask_20,col = hcl.colors(12, "PinkYl"), main = "2020 Yield")
+```
+
+```{r}
+mask_23 <- mask(EXA23, EX.Shape)
+plot(mask_23,col = hcl.colors(12, "TealGrn"), main = "2020 Yield")
+```
+
+Do our rasters match?
+```{r}
+compareGeom(EXA.R, mask_23)
+```
+
+
+
+FALSE!!! Why not? See below...
+
+This is EXA.R -- it has not been resampled and masked to fit the template 2!
+```{r}
+EXA.R <- rasterField(
+  field = EXA, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+```
+
+
+```{r}
+EXA25 <- resample(EXA.R, template2, method = "bilinear") #Bilinear is used for continuous data (like yield)
+```
+
+
+```{r}
+mask_25 <- mask(EXA25, EX.Shape)
+plot(mask_25,col = hcl.colors(12, "Peach"), main = "2020 Yield")
+```
+
+```{r}
+compareGeom(mask_25, mask_23)
+```
+
+```{r}
+compareGeom(mask_20, mask_25)
+```
+
+We match!
+
+Time to stack!
+
+```{r}
+yield_stack <- c(mask_20,
+                 mask_23,
+                 mask_25)
+
+names(yield_stack) <- c("2020", "2023", "2025")
+
+yield_stack
+```
+
+# Yield Zone example 
+
+Here we are going to delineate yield stability zones over 3 years of harvest data from this field using the methods of Maestrini & Basso, 2018. 
+
+### Step 1: Import
+
+We've already done it!
+
+###### Step 1.5: Boundary choices
+
+We did this above-- do we keep the boundary as the main shape or do you want to switch? If yes, we'll redo the below steps, if no we'll move on. 
+Time dependent it is good practice!
+
+### Step 2: Resample
+
+### Step 3: Mask
+
+### Step 4: Combine
+
+### Step 5: Make Long
+
+Why make it long? For figures and statistics! Fortunately, the package tidyr has a pivot_long function that makes this process easy!
+
+```{r}
+
+```
+
+
+### Step 6: FIGURE 
+
+### Step 7: Calculate mean yield and sd
+
+This is in reference to the Maestrini and Basso paper. They determined yield zones by first normalizing by centering on 0 and scaling to a sd of 1. For every pixel, we will deterimine the mean normalized yield across our 3 years and the temporal sd. 
+
+We're removing NA observations-- it can make the temporal sd funky
+```{r}
+yield_stack[yield_stack == 0] <- NA
+
+yield_real <- app(yield_stack, fun = function(x){ # app is a cool tool in terra-- apply a function to a raster!
+  all(!is.na(x))
+})
+
+yield_all_real <- mask(yield_stack, yield_real) # notice-- masking!
+
+yield_all <- yield_all_real
+```
+
+
+Now for the math
+```{r}
+yield_mean <- app(yield_all, mean, na.rm = TRUE)
+yield_sd <- app(yield_all, sd, na.rm = FALSE)
+
+# global is a cool terra function-- compute global statistics ie summarized values of an entire raster
+mu <- global(yield_mean, mean, na.rm = TRUE)[1,1] #mean yield
+mu2 <- global(yield_sd, mean, na.rm = TRUE)[1,1] #mean sd
+sdv <- global(yield_mean, sd, na.rm = TRUE)[1,1] #sd of the mean
+sdv2 <- global(yield_sd, sd, na.rm = TRUE)[1,1] #sd of the sd
+yield_z <- (yield_mean - mu) / sdv #yield z value
+sd_z <- (yield_sd - mu2) / sdv2 #sd z value
+```
+
+### Step 8: Delineate the zones
+
+We're going to have FOUR zones!
+High yield high variability (unstable)
+High yield low variability (stable)
+
+Low yield high variability (unstable)
+Low yield low variability (stable)
+
+
+```{r}
+zones <- ifel(
+  yield_z > 0 & sd_z > 0, 1, #high yield, high variability
+  ifel(yield_z > 0 & sd_z < 0, 2, #high yield, low variability
+  ifel(yield_z < 0 & sd_z > 0, 3, #low yield, high variability
+       4)) #low yield, low variability
+)
+```
+
+
+```{r}
+levels(zones) <- data.frame(
+  value = 1:4,
+  zone = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+```
+
+
+### Step 9: FIGURE
+
+```{r}
+plot(zones, col = c("#66C2A5", "#1B9E77","#8DA0CB", "#984EA3"))
+```
+
+Lovely! but also BOO I want ggplot2! and new colors!!!!
+
+```{r}
+library(ggplot2)
+ggplot(data = zones, aes(x = x, y = y, fill = zone)) +
+  geom_raster() +
+  scale_fill_manual("Yield Stability Zones",
+                    values = c("#7FFF00", "#548B54", "#FFB6C1", "#FF3E96")) + # Set color limits
+ # labs(fill = "Value") +
+  theme_bw() + 
+ #facet_wrap(~year)+
+  theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+
+
+```
+
+OH NO! You can't plot a raster like this in ggplot2! You must make it a data frame...which is super easy!
+
+
+```{r}
+zone <- as.data.frame(zones, xy = TRUE)
+```
+
+REALLY make sure you do xy= TRUE... This let's us keep the xy values!!!
+
+```{r}
+
+ggplot(data = zone, aes(x = x, y = y, fill = zone)) +
+  geom_raster() +
+  scale_fill_manual("Yield Stability Zones",
+                    values = c("#7FFF00", "#548B54", "#FFB6C1", "#FF3E96")) + # Set color limits
+ # labs(fill = "Value") +
+  theme_bw() + 
+ #facet_wrap(~year)+
+  theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+
+
+```
+
+These colors are kind of ugly but you get the idea. 
+
+## Management sidebar
+
+Ok we made a management zone map... cool... how useful is this pixel by pixel map though? I don't think it would be worth a farmer's time to deal with these tiny dots of low yield... perhaps we should make our map more useful to a manager... but how?
+
+This is where I discovered the function 'focal'
+Focal calculates neighborhood statistics in a raster. We will be using it to tell our raster to absorb pixels based on the values surrounding them. 
+
+My initial thought was that this reminds me of cellular automata models-- except just one generation
+
+
+
+
+Raster -> Dataframe
+- align using the x, y but they HAVE GOT TO MATCH
+
+Pixels get weird
+- ag data is gonna vary in observation size and forcing it to fit one size can make it really really wrong
+- always mask early and set values for resolution right away and CHECK compareGeom()
+- keep track of units
+
+
+
+
+
+
+
+
+
