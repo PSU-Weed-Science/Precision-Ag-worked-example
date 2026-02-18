@@ -1,0 +1,1216 @@
+---
+title: "See and Spray project"
+author: "L Sencenbaugh"
+date: "2026-02-17"
+output: html_document
+---
+
+
+
+
+# Introduction
+
+What do we want to have Austin doing? I think perhaps uploading stuff and maybe basic plotting, but nothing overly analytical? 
+
+
+## Step 1: Upload fields
+
+Here we are going to import the fields and boundaries. We will make sure the rasters match with respect to extent, resolution, and crs. 
+
+Steps per cleanRfield:
+1. Upload as a vector
+2. Build boundary (template--using our usual shape)
+3. Mask using new boundary
+
+
+####### Load packages
+
+```{r}
+
+#install.packages("cleanRfield")
+library(cleanRfield)
+
+#install.packages("devtools")
+#devtools::install_github("cldossantos/pacu")
+
+#devtools::install_github("filipematias23/cleanRfield")
+library(terra) #raster stuff
+library(dplyr) #organization
+library(sf) #zone delination
+library(ggplot2) #plotting
+library(ggpubr) #plotting
+library(tidyr) #pivot long
+library(emmeans) #analysis
+library(multcomp) #analysis
+```
+
+October 2020
+
+```{r}
+par(mfrow=c(1,2))
+
+EXO20 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2020-10-20_00.shp")
+plot(EXO20, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+
+###### TEMPLATE
+
+```{r}
+template <- rast(
+  ext(EX.Shape),
+  resolution = 0.00008, #make it medium tiny
+  crs = crs(EX.Shape) # keep original boundary
+)
+```
+
+
+Resample using the new boundary (the template)
+
+```{r}
+
+EXO20.R <- rasterField(
+  field = EXO20, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_20 <- resample(EXO20.R, template, method = "bilinear")
+```
+
+
+
+November 2021
+
+```{r}
+par(mfrow=c(1,2))
+
+EXO21 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2021-11-07_00.shp")
+plot(EXO21, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+
+EXO21.R <- rasterField(
+  field = EXO21, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_21 <- resample(EXO21.R, template, method = "bilinear")
+```
+
+
+December 2022
+
+```{r}
+par(mfrow=c(1,2))
+
+EXO22 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2022-12-13_00.shp")
+plot(EXO22, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+
+EXO22.R <- rasterField(
+  field = EXO22, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_22 <- resample(EXO22.R, template, method = "bilinear")
+```
+
+
+October 2023
+
+```{r}
+par(mfrow=c(1,2))
+
+EXO23 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2023-10-26_00.shp")
+plot(EXO23, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+
+EXO23.R <- rasterField(
+  field = EXO23, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_23 <- resample(EXO23.R, template, method = "bilinear")
+```
+
+
+November 2024
+
+```{r}
+par(mfrow=c(1,2))
+
+EXO24 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2024-11-13_00.shp")
+plot(EXO24, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+```{r}
+
+EXO24.R <- rasterField(
+  field = EXO24, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_24 <- resample(EXO24.R, template, method = "bilinear")
+```
+
+
+
+October 2025
+```{r}
+par(mfrow=c(1,2))
+
+EXO25 <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Harvest_2025-10-29_00.shp")
+plot(EXO25, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+par(mfrow=c(1,1))
+
+```
+
+
+```{r}
+
+EXO25.R <- rasterField(
+  field = EXO25, 
+  trait = c("DRYMATTER"),
+  res = 0.00008
+)
+
+EXO1_25 <- resample(EXO25.R, template, method = "bilinear")
+```
+
+
+
+## Step 2: create YIELD ZONES
+
+From grant proposal:
+
+Our yield stability zone classification will be based on methods described in Maestrini & Basso (2018). Grain yield will be normalized for every site-year by centering yield on 0 and scaling to a standard deviation of 1. For every pixel, we will calculate the mean normalized yield across years (at least 5 years) and the standard deviation of the normalized yield across years. Placing yield and temporal variability on a relative scale allows for incorporation of multiple crops (e.g., corn, soybean, wheat) in analyses and concentrates analysis and visualization of yield trends on variability within any given field, regardless of underlying soil-environment or biotic factors that limit yield potential.  
+
+ 
+
+Using this method, we will classify relative yield potential as “high” if the normalized yield is >0 (e.g., greater than the field average) and “low yield” if <0 (e.g., less than the field average). In addition, each pixel will be classified as “stable” if the standard deviation is <0 (e.g., variance is smaller than the field average) and “unstable” if >0 (e.g., variance is greater than the field average). Together, this creates a classification system with four yield stability zones: high/stable, high/unstable, low/stable, low/unstable
+
+
+Masking to make it all match 
+
+```{r}
+o20mask1 <- mask(EXO1_20, EX.Shape)
+o21mask1 <- mask(EXO1_21, EX.Shape)
+o22mask1 <- mask(EXO1_22, EX.Shape)
+o23mask1 <- mask(EXO1_23, EX.Shape)
+o24mask1 <- mask(EXO1_24, EX.Shape)
+o25mask1 <- mask(EXO1_25, EX.Shape)
+
+```
+
+```{r}
+# stack the raster of all years
+yield_all1 <- c(
+  o20mask1,
+  o21mask1,
+  o22mask1,
+  o23mask1,
+  o24mask1,
+  o25mask1
+)
+
+# renaming so that it isn't "dry matter" listed 6 times
+# this tells it to name each column for the year
+
+names(yield_all1) <- c("2020", "2021", "2022", "2023", "2024", "2025")
+
+str(yield_all1) # check the structure
+
+yield_all1[yield_all1 == 0] <- NA #0 = NA 
+
+
+yield_real1 <- app(yield_all1, fun = function(x){
+  all(!is.na(x))
+}) # remove NAs
+
+yield_all_real1 <- mask(yield_all1, yield_real1) #match to removed NA values
+
+yield_all1 <- yield_all_real1 #sorry name changes happened
+
+yield_sd1 <- app(yield_all1, sd, na.rm = FALSE) # standard deviation
+
+yield_mean1 <- app(yield_all1, mean, na.rm = TRUE) # mean
+
+
+mewww1 <- global(yield_mean1, mean, na.rm = TRUE)[1,1] # [1,1] keeps it numeric and not the whole matrix
+mew2_1 <- global(yield_sd1, mean, na.rm = TRUE)[1,1] # mean sd of the whole (global)
+sdv1 <- global(yield_mean1, sd, na.rm = TRUE)[1,1] # sd of the mean 
+sdv2_1 <- global(yield_sd1, sd, na.rm = TRUE)[1,1] # sd of the sd 
+yield_z1 <- (yield_mean1 - mewww1) / sdv1 # does yield deviate
+sd_z1 <- (yield_sd1 - mew2_1) / sdv2_1 # sd of yield deviation
+```
+
+###### Zone figure 1
+
+```{r}
+zonas1 <- ifel(
+  yield_z1 > 0 & sd_z1 > 0, 1, #high yield, high variability
+  ifel(yield_z1 > 0 & sd_z1 < 0, 2, #high yield, low variability
+  ifel(yield_z1 < 0 & sd_z1 > 0, 3, #low yield, high variability
+       4)) #low yield, low variability
+)
+
+levels(zonas1) <- data.frame(
+  value = 1:4,
+  zone = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+plot(zonas1, col = c("#66C2A5", "#1B9E77","#8DA0CB", "#984EA3")) #most simple plot-- too high res for real use
+```
+
+
+
+###### Zone figure 2
+Here's the deal, we made a figure and that's fine and dandy, but it isn't management reasonable. 
+The above figures are pixel by pixel-- farmers aren't able to run equipment like that. As such, we're going to 'smooth' the zones. 
+To do this, I am going to use focal(modal) to tell r to 'absorb' nearby pixels based on what the majority of the pixels around it are doing. It reminds me of a cellular automata!
+
+
+Middle pixel size (prefer the big)
+```{r}
+str(zonas1)
+
+
+zone_smooth <- focal(
+  zonas1,
+  w = w,
+  fun = modal, # modal isn't working 
+  na.rm = TRUE,
+  expand = FALSE
+)
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+zone_smooth_masked <- mask(zone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+zone_df <- as.data.frame(zone_smooth_masked, xy = TRUE)
+names(zone_df)[3] <- "zone"
+
+zone_df$zone <- factor(
+  zone_df$zone,
+  levels = 1:4,
+  labels = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+### plot
+
+ggplot() +
+  geom_raster(
+    data = zone_df,
+    aes(x = x, y = y, fill = zone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+  scale_fill_manual(
+    values = c("#66C2A5", "#1B9E77", "#8DA0CB", "#984EA3"),
+    name = "Yield stability zone"
+  ) +
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+  
+
+```
+
+big pixel size (the winner!)
+```{r}
+# w determines the number of pixels around it to consider 
+
+w <- matrix(1, nrow = 5, ncol = 5)
+
+zone_smooth <- focal(
+  zonas1,
+  w = w,
+  fun = modal,
+  na.rm = TRUE,
+  expand = FALSE
+)
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+zone_smooth_masked <- mask(zone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+zone_df <- as.data.frame(zone_smooth_masked, xy = TRUE)
+names(zone_df)[3] <- "zone"
+
+zone_df$zone <- factor(
+  zone_df$zone,
+  levels = 1:4,
+  labels = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+
+### plot
+
+ggplot() +
+  geom_raster(
+    data = zone_df,
+    aes(x = x, y = y, fill = zone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+  scale_fill_manual(
+    values = c("#66C2A5", "#1B9E77", "#8DA0CB", "#984EA3"),
+    name = "Yield stability zone"
+  ) +
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+  
+
+```
+
+*** maybe not needed for Austin?? *** 
+###### Statistical analysis
+
+Issue: Above raster stuff is in a form that can be put into a linear model!
+
+
+```{r}
+zonas <- zonas1
+head(zonas)
+str(zonas) # spat raster
+zonas_df <- as.data.frame(zonas, xy = TRUE)
+head(zonas_df)
+str(zonas_df)
+
+yield_all <- yield_all1
+head(yield_all) # spat raster
+str(yield_all)
+
+yield_df <- as.data.frame(yield_all, xy = TRUE)
+str(yield_df)
+head(yield_df)
+
+
+
+# make column for zone
+
+
+yield_final <- yield_df %>%
+  left_join(zonas_df, by = c("x", "y"))
+
+str(yield_final)
+head(yield_final)
+
+
+sum(is.na(yield_final$zone))
+
+yield_final <- yield_final %>%
+  filter(!is.na(zone))
+
+sum(is.na(yield_final$zone))
+```
+
+
+boom look at that ^^ 
+
+Now to make a model need to make long based on year
+
+```{r}
+# based on year
+
+# lucky me I did this for the grow data
+
+yield_final_long <- yield_final %>%
+  tidyr::pivot_longer(
+    cols = c("2020", "2021", "2022", "2023", "2024", "2025"),
+    names_to = "year",
+    values_to = "yield"
+  ) 
+
+
+yield_final_long$zone1 <- yield_final_long$zone
+yield_final_long$zone1 <- as.numeric(yield_final_long$zone1)
+
+yield_final_long <- as.data.frame(yield_final_long)
+
+head(yield_final_long)
+```
+
+
+
+
+## Step 3: spray efficacy zones
+
+Objective 2 of this grant is pertaining to the efficacy of applying See & Spray to this field. 
+We want to isolate the year we have See & Spray (2025) and give herbicide application a binary value 1 if spray, 0 else.
+Then we want to model 0,1 ~ zone
+
+
+the same field may spray info
+```{r}
+par(mfrow=c(1,2))
+
+EXM <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Application_2025-05-12_00.shp")
+plot(EXM, main="Data Point")
+
+EX.Shape<-vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main="Field Boundary")
+
+crs(EXM)
+exm_utm <- project(EXM, "EPSG:32618")
+crs(exm_utm)
+# cool we're in meters (and in PA)
+
+target_res_m <- 0.165161 # John suspected the spray observations were 16" (this is in meters)
+
+#update: cleanRfield works in DEGREES ugh so I have to figure out something that matches
+# I googled how many degrees is one meter at our lat/long and got some silly math
+
+#at 40 N 1 degree latitude is 111,111 meters
+#at any longitude a degree is 85,394 meters
+
+w <- 85394
+h <- 111111
+A_in_m <- w * h # 1 square degree in square meters
+# now convert to our target?
+A_in_degrees <- 0.165161/A_in_m
+
+
+target_res_degrees <- target_res_m/111000
+
+template <- rast(
+  ext(EX.Shape),
+  resolution = target_res_degrees, 
+  crs = crs(EX.Shape)
+)
+
+
+EXM.R <- rasterField(
+  field = EXM, 
+  trait = c("AppliedRate"),
+  res = target_res_degrees)
+
+res(EXM.R)
+
+par(mfrow=c(1,2))
+
+
+hist(EXM.R$AppliedRate)
+ # 
+plot(EXM.R$AppliedRate,col = hcl.colors(9, "PinkYl"))
+
+EXM1 <- resample(EXM.R, template, method = "bilinear")
+```
+
+
+this is this field but with the july spray info
+```{r}
+par(mfrow=c(1,2))
+
+EXJ <- vect("PSU-FS-36A/PSU Farm Ser_Farm 36_36A_Application_2025-07-07_00.shp")
+plot(EXJ, main="Data Point")
+
+EX.Shape <- vect("PSU-FS-36A/boundaries_36A.shp")
+plot(EX.Shape, main = "Field Boundary")
+
+par(mfrow=c(1,1))
+
+EXJ.R <- rasterField(
+  field = EXJ, 
+  trait = c("AppliedRate","TargetRate"),
+  res = target_res_degrees
+)
+
+EXJ1 <- resample(EXJ.R, template, method = "bilinear")
+
+
+summary(EXJ1)
+
+par(mfrow=c(1,2))
+hist(EXJ1$AppliedRate)
+
+plot(EXJ.R$AppliedRate,col = hcl.colors(9, "Sunset"))
+plot(EXJ.R$TargetRate,col = hcl.colors(9, "Sunset"))
+```
+
+
+
+Adjusting everything to match
+
+```{r}
+utm18 <- "EPSG:26918"
+
+EX.Shape_utm <- project(EX.Shape, utm18)
+EXO20_utm   <- project(EXO20, utm18)
+EXO21_utm   <- project(EXO21, utm18)
+EXO22_utm   <- project(EXO22, utm18)
+EXO23_utm   <- project(EXO23, utm18)
+EXO24_utm   <- project(EXO24, utm18)
+EXO25_utm   <- project(EXO25, utm18)
+EXJ_utm     <- project(EXJ, utm18)
+
+```
+
+
+MAKE IT ALL THE SAME
+
+```{r}
+
+EXO20.R <- rasterField(
+  field = EXO20_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+
+EXO21.R <- rasterField(
+  field = EXO21_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+
+EXO22.R <- rasterField(
+  field = EXO22_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+EXO23.R <- rasterField(
+  field = EXO23_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+EXO24.R <- rasterField(
+  field = EXO24_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+EXO25.R <- rasterField(
+  field = EXO25_utm,
+  trait = "DRYMATTER",
+  res = 8  
+)
+
+
+EXJ.R <- rasterField(
+  field = EXJ_utm,
+  trait = c("AppliedRate","TargetRate"),
+  res = 0.4064
+)
+
+
+```
+
+
+
+Basically, this is me repeating stuff I've already done but fitting everything to meters and not degrees
+and then fitting it to the outline again 
+
+```{r}
+template <- rast(
+  ext(EX.Shape_utm),
+  resolution = 8,
+  crs = crs(EX.Shape_utm)
+)
+
+EXO20.R <- rasterField(EXO20_utm, "DRYMATTER", res = 8)
+EXO20.R <- resample(EXO20.R, template, method = "bilinear")
+help20  <- mask(EXO20.R, EX.Shape_utm)
+
+EXO21.R <- rasterField(EXO21_utm, "DRYMATTER", res = 8)
+EXO21.R <- resample(EXO21.R, template, method = "bilinear")
+help21  <- mask(EXO21.R, EX.Shape_utm)
+
+EXO22.R <- rasterField(EXO22_utm, "DRYMATTER", res = 8)
+EXO22.R <- resample(EXO22.R, template, method = "bilinear")
+help22  <- mask(EXO22.R, EX.Shape_utm)
+
+EXO23.R <- rasterField(EXO23_utm, "DRYMATTER", res = 8)
+EXO23.R <- resample(EXO23.R, template, method = "bilinear")
+help23  <- mask(EXO23.R, EX.Shape_utm)
+
+EXO24.R <- rasterField(EXO24_utm, "DRYMATTER", res = 8)
+EXO24.R <- resample(EXO24.R, template, method = "bilinear")
+help24  <- mask(EXO24.R, EX.Shape_utm)
+
+EXO25.R <- rasterField(EXO25_utm, "DRYMATTER", res = 8)
+EXO25.R <- resample(EXO25.R, template, method = "bilinear")
+help25  <- mask(EXO25.R, EX.Shape_utm)
+
+
+yield_r <- c(help20, help21, help22, help23, help24, help25)
+
+#terra::compareGeom(yield_r)
+
+template1 <- rast(
+  ext(EX.Shape_utm),
+  resolution =  0.4064,
+  crs = crs(EX.Shape_utm)
+)
+
+EXJ.R <- rasterField(
+  field = EXJ_utm,
+  trait = c("AppliedRate","TargetRate"),
+  res = 0.4064
+)
+EXJ.R <- resample(EXJ.R, template1, method = "bilinear")
+spray_r  <- mask(EXJ.R, EX.Shape_utm)
+
+# create the binary!!!
+spray01 <- ifel(spray_r$AppliedRate > 0, 1, 0)
+```
+
+
+###### Figure - spray 1,0
+
+```{r}
+
+spray01a <- as.data.frame(spray01, xy = TRUE)
+
+spray01a$spray <- factor(
+  spray01a$AppliedRate,
+  levels = c(0, 1),
+  labels = c("No spray", "Spray applied")
+)
+spray01a <- spray01a |> dplyr::filter(!is.na(spray))
+
+Herbicide <- ggplot() +
+  geom_raster(
+    data = spray01a,
+    aes(x = x, y = y, fill = spray)) +
+  geom_sf(
+    data = st_as_sf(EX.Shape_utm),
+    fill = NA,
+    color = "black",
+    linewidth = 1) +
+  coord_sf() +
+  scale_fill_manual(
+    name = "Herbicide application",
+    values = c(
+      "No spray" = "grey85",
+      "Spray applied" = "#b2182b")) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    plot.margin = margin(1, 0.5, 0, 0, "cm"),
+    legend.position = ("None"),
+    aspect.ratio = 1
+  )
+
+
+Herbicide
+
+
+Herbicide_zoomies <- ggplot() +
+  geom_raster(
+    data = spray01a,
+    aes(x = x, y = y, fill = spray)) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1) +
+ coord_sf(
+  xlim = c(260900, 261100),
+  ylim = c(4526000, 4526300),
+  expand = FALSE) + 
+  scale_fill_manual(
+    name = "Herbicide application",
+    values = c(
+      "No spray" = "grey85",
+      "Spray applied" = "#b2182b")) +
+
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    plot.margin = margin(1, 0.5, 0, 0, "cm"),
+    legend.position = "None",
+    aspect.ratio = 1)
+
+
+
+
+
+Herbicide_zoomies
+
+
+
+
+ggarrange(
+  Herbicide,
+  Herbicide_zoomies
+)
+
+```
+
+
+RE DO THE ZONES 
+
+We're doing this because previously we were fit to degrees not meters-- this makes R confused so we have to make everything match to meters now. This all turns out the same as previous
+
+```{r}
+names(yield_r)<- c("2020", "2021", "2022", "2023", "2024", "2025")
+yield_r[yield_r == 0] <- NA
+
+yield_r1 <- app(yield_r, fun = function(x){
+  all(!is.na(x))
+})
+
+yield_r1a <- mask(yield_r, yield_r1)
+
+yield_r <- yield_r1a
+
+yield_r_sd1 <- app(yield_r, sd, na.rm = FALSE)
+
+yield_r_mean1 <- app(yield_r, mean, na.rm = TRUE)
+
+
+mu <- global(yield_r_mean1, mean, na.rm = TRUE)[1,1]
+mu_1 <- global(yield_r_sd1, mean, na.rm = TRUE)[1,1]
+sdv <- global(yield_r_mean1, sd, na.rm = TRUE)[1,1]
+sdv_1 <- global(yield_r_sd1, sd, na.rm = TRUE)[1,1]
+yield_z <- (yield_r_mean1 - mu) / sdv
+sd_z <- (yield_r_sd1 - mu_1) / sdv_1
+
+zonex <- ifel(
+  yield_z > 0 & sd_z > 0, 1, #high yield, high variability
+  ifel(yield_z > 0 & sd_z < 0, 2, #high yield, low variability
+  ifel(yield_z < 0 & sd_z > 0, 3, #low yield, high variability
+       4)) #low yield, low variability
+)
+levels(zonex) <- data.frame(
+  value = 1:4,
+  zone = c(
+    "High yield, unstable",
+    "High yield, stable",
+    "Low yield, unstable",
+    "Low yield, stable"
+  )
+)
+plot(zonex, col = c("#66C2A5", "#1B9E77","#8DA0CB", "#984EA3"))
+```
+
+```{r}
+zonas1_spray <- resample(
+  zonex,
+  spray01,
+  method = "near"
+)
+
+
+compareGeom(spray01, zonas1_spray)
+
+
+#yeehaw
+```
+
+
+```{r}
+spray_by_zone <- zonal(
+  spray01,
+  zonas1_spray,
+  fun = "mean",
+  na.rm = TRUE
+)
+
+```
+
+
+
+method = "near" is the key-- this is gonna help attribute cells that don't have a zone label (they're the teeny tiny spray pixels) absorb the label of whatever bigger zone pixel they are in 
+
+```{r}
+zonas_yield <- resample(zonex, yield_r[[1]], method = "near")
+zonas_spray <- resample(zonex, spray01,     method = "near")
+
+```
+
+Made all of the above match
+
+
+```{r}
+
+# 1. Resample zones & yield to match fine spray
+zones_on_spray <- resample(zonex, spray_r, method = "near")
+
+zones_on_spray <- mask(zones_on_spray, EX.Shape_utm)
+zones_filled <- focal(zones_on_spray, w = matrix(1,3,3), fun = modal, na.policy="only")
+summary(zones_filled)
+plot(zones_filled)
+# zones are correct
+
+
+yield_on_spray <- resample(yield_r[[6]], spray_r, method = "near")  # for 2025
+
+# 2. Create data frames
+yield_df  <- as.data.frame(yield_on_spray, xy = TRUE)
+spray_df  <- as.data.frame(spray_r$AppliedRate, xy = TRUE)
+zones_df  <- as.data.frame(zones_on_spray, xy = TRUE)
+
+# 3. Rename for clarity
+names(yield_df)[3] <- "yield"
+names(spray_df)[3] <- "AppliedRate"
+names(zones_df)[3] <- "zone"
+
+# 4. Join
+pixel_data <- yield_df %>%
+  left_join(spray_df, by = c("x", "y")) %>%
+  left_join(zones_df, by = c("x", "y"))
+
+# 5. Make spray 0/1 correctly
+pixel_data <- pixel_data %>%
+  mutate(
+    spray01 = ifelse(is.na(AppliedRate), 0,
+                     ifelse(AppliedRate > 0, 1, 0)),
+    zone = factor(zone)
+  )
+```
+
+Figure matches!
+
+
+Step 1: yield and spray 
+
+```{r}
+
+yield_2025 <- help25
+spray_2025 <- resample(spray_r, help25, method = "near")
+please <- c(yield_2025, spray_2025)
+
+names(please) <- c("Yield", "Applied", "Target")
+
+please[please == 0] <- NA
+
+
+```
+
+
+Step 2: deviation before resampling
+```{r}
+
+deviation <- spray_2025$TargetRate - spray_2025$AppliedRate
+names(deviation) <- "deviation"
+dev_zone <- classify(
+  deviation,
+  rcl = matrix(c(
+    -115, -2.5, 1,
+    -2.49999999999999, 6, 2
+  ), ncol = 3, byrow = TRUE)
+)
+
+levels(dev_zone) <- data.frame(
+  value = c(1, 2),
+  devzone = c("Low-dose", "On-target")
+)
+
+
+devzoneonspray <- resample(dev_zone, please, method = "near")
+devzoneonspray <- mask(devzoneonspray, EX.Shape_utm)
+
+
+
+```
+
+
+Step 3: yield zones
+```{r}
+zones_on_spray <- resample(zonex, please, method = "near")
+zones_on_spray <- mask(zones_on_spray, EX.Shape_utm)
+
+
+all <- c(please, devzoneonspray, zones_on_spray)
+
+all_df <- as.data.frame(all, xy = TRUE) %>%
+  mutate(
+    spray01 = ifelse(is.na(Applied), 0,
+                     ifelse(Applied > 0, 1, 0)),
+    zone = factor(zone),
+    devzone = factor(devzone)
+  )
+
+
+
+head(all_df)
+```
+
+
+
+### Deviation zones figure
+
+
+```{r}
+template <- rast(
+  ext(EX.Shape),
+  resolution = 0.00008, #make it medium tiny
+  crs = crs(EX.Shape)
+)
+
+
+EXO25.R <- rasterField(EXO25, "DRYMATTER", res = 0.00008)
+EXO25.R <- resample(EXO25.R, template, method = "bilinear")
+help25  <- mask(EXO25.R, EX.Shape)
+
+
+EXJ.R <- rasterField(
+  field = EXJ,
+  trait = c("AppliedRate","TargetRate"),
+  res = 0.00008
+)
+EXJ.R <- resample(EXJ.R, template, method = "bilinear")
+spray_r  <- mask(EXJ.R, EX.Shape)
+
+```
+
+
+
+```{r}
+yield_2025 <- c(
+  help25
+)
+spray_2025 <- c(spray_r)
+
+
+spray_2025 <- c(yield_2025, spray_2025)
+
+names(spray_2025) <- c("Yield", "Applied", "Target")
+
+spray_2025[spray_2025 == 0] <- NA
+
+spray_20251 <- app(spray_2025, fun = function(x){
+  all(!is.na(x))
+})
+
+spray_2025_real <- mask(spray_2025, spray_20251)
+
+
+spray_2025 <- spray_2025_real
+
+
+deviation <- spray_2025$Target - spray_2025$Applied
+names(deviation) <- ("deviation")
+```
+
+Below and On/Above
+
+Allowed to be 25% off
+
+```{r}
+dev_zone <- classify(
+  deviation, 
+  rcl = matrix( c(
+    -115, -2.5, 1, #low
+    -2.49999999999999, 6, 2 #on and above
+  ), ncol = 3, byrow = TRUE)
+)
+```
+
+
+```{r}
+levels(dev_zone) <- data.frame(
+  value = c(1, 2),
+  devzone = c("Low-dose", "On-target")
+)
+```
+
+
+```{r}
+plot(dev_zone, col = c("#de425b", "#83af70"))
+```
+
+```{r}
+devzone1 <- as.data.frame(dev_zone, xy = TRUE)
+
+spraydevzones <- ggplot(data = devzone1, aes(x = x, y = y, fill = devzone)) +
+  geom_raster() +
+  scale_fill_manual("Spray Performance Zones",
+                    values = c("#de425b", "#83af70")) + # Set color limits
+  labs(fill = "Value") +
+  theme_bw() + 
+ #facet_wrap(~year)+
+  theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+
+```
+
+
+
+```{r}
+w <- matrix(1, nrow = 5, ncol = 5)
+terraOptions(memfrac = 0.6, tempdir = tempdir())
+dev_zone <- writeRaster(dev_zone, tempfile(fileext = ".tif"), overwrite = TRUE)
+devzone_smooth <- focal(
+  dev_zone,
+  w = w,
+  fun = modal,
+  na.rm = TRUE,
+  expand = FALSE
+)
+## Mask to fit the border(Ex.Shape) AFTER smoothing ???
+
+devzone_smooth_masked <- mask(devzone_smooth, EX.Shape)
+
+## THEN this data frame set up and labels 
+
+devzone_df <- as.data.frame(devzone_smooth_masked, xy = TRUE)
+names(devzone_df)[3] <- "devzone"
+
+devzone_df$devzone <- factor(
+  devzone_df$devzone,
+  levels = 1:2,
+  labels = c(
+    "Low-dose",
+    "On-target"
+  )
+)
+
+### plot
+
+ggplot() +
+  geom_raster(
+    data = devzone_df,
+    aes(x = x, y = y, fill = devzone)
+  ) +
+  geom_sf(
+    data = st_as_sf(EX.Shape),
+    fill = NA,
+    color = "black",
+    linewidth = 1
+  ) +
+  coord_sf() +
+   scale_fill_manual("Spray Performance Zones",
+                    values = c("#de425b", "#83af70")) + # Set color limits
+  theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.5),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 0.5, 0, 0, "cm"),
+        aspect.ratio = 1)
+```
+
+
+
+### Analysis
+The real model for the grant
+probability of weed occurrence 1,0 ~ interaction between yield stability zone and spray deviation zone
+
+```{r}
+themodel <- glm(spray01 ~ zone * devzone, family = "binomial", data = all_df)
+summary(themodel)
+anova(themodel)
+plot(themodel)
+#library(emmeans)
+
+spray <- emmeans(themodel, pairwise ~ zone )
+#df is weird
+
+cld_results1 <- cld(spray, adjust = "tukey", Letters = letters)
+cld_results1 
+
+themodel <- glm(spray01 ~ zone + devzone, family = "binomial", data = all_df)
+summary(themodel)
+anova(themodel)
+plot(themodel)
+#library(emmeans)
+
+spray <- emmeans(themodel, pairwise ~ zone)
+#df is weird
+
+cld_results1 <- cld(spray, adjust = "tukey", Letters = letters)
+cld_results1 
+
+spray <- emmeans(themodel, pairwise ~ devzone)
+#df is weird
+
+cld_results1 <- cld(spray, adjust = "tukey", Letters = letters)
+cld_results1 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
